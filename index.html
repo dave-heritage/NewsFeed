@@ -1,0 +1,241 @@
+﻿<!DOCTYPE html>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+<script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Heritage News</title>
+
+    <!-- update the version number as needed -->
+    <script defer src="/__/firebase/7.15.2/firebase-app.js"></script>
+    <!-- include only the Firebase features as you need -->
+    <script defer src="/__/firebase/7.15.2/firebase-auth.js"></script>
+    <script defer src="/__/firebase/7.15.2/firebase-database.js"></script>
+    <script defer src="/__/firebase/7.15.2/firebase-messaging.js"></script>
+    <script defer src="/__/firebase/7.15.2/firebase-storage.js"></script>
+    <!-- initialize the SDK after all desired features are loaded -->
+    <script defer src="/__/firebase/init.js"></script>
+
+    <style media="screen">
+    </style>
+  </head>
+  <body>
+      <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+          <a class="navbar-brand" href="#">Heritage News</a>
+
+          <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+              <ul class="navbar-nav mr-auto">
+                  <li class="nav-item active">
+                      <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
+                  </li>
+                  <li class="nav-item">
+                      <a class="nav-link" href="#">Saved</a>
+                  </li>
+              </ul>
+              <form class="form-inline my-2 my-lg-0">
+                  <input type="button" value="Login" id="loginBtn" class="btn btn-outline-success my-2 my-sm-0" onclick="location.href = 'login.html'"></button>
+                  <input type="button" value="Logout" id="logoutBtn" class="btn btn-outline-success my-2 my-sm-0 notVisible" onclick="userLogout()"></button>
+              </form>
+          </div>
+      </nav>
+
+      <main role="main" class="container">
+
+          <div class="card text-center">
+              <div class="card-header">
+                  <ul class="nav nav-pills card-header-pills">
+                      <li class="nav-item">
+                          <a class="nav-link active" href="#" onclick="toggleActive(this)">URL</a>
+                      </li>
+                      <li class="nav-item">
+                          <a class="nav-link" href="#" onclick="toggleActive(this)">XML</a>
+                      </li>
+                  </ul>
+              </div>
+              <div class="card-body">
+                  <blockquote class="blockquote mb-0" id="urlInput">
+                      <p>Add an RSS feed by inputing the url.</p>
+                      <input type="url" id="rssFeedInputUrl" placeholder="Insert Url here."><input type="button" value="Add Feed." onclick="addRSSFeedByUrl()">
+                  </blockquote>
+                  <blockquote class="blockquote mb-0 notVisible" id="xmlInput">
+                      <p>Add an RSS feed by inputing the xml.</p>
+                      <input type="text" class="rssByXml" id="rssFeedInputXml" placeholder="Insert xml here."><input type="button" value="Add Feed." onclick="parseXml($('#rssFeedInputXml').val())">
+                  </blockquote>
+              </div>
+          </div>
+
+      </main>
+  </body>
+</html>
+
+<style>
+    body {
+  padding-top: 5rem;
+  background: #007bff;
+  background: linear-gradient(to right, #0062E6, #33AEFF);
+}
+
+.starter-template {
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+    .aDescription {
+        font-size: small;
+    }
+
+    .newsCard {
+        margin: 0 auto; /* Added */
+        float: none; /* Added */
+        margin-bottom: 10px; /* Added */
+        width: 80%;
+    }
+
+    .newsCard:hover {
+        box-shadow: 0 1rem 3rem rgba(0,0,0,.175)!important;
+    }
+
+    .notVisible {
+        display: none;
+    }
+
+    .rssByXml {
+        width: 500px;
+        height: 500px;
+    }p{
+    font-weight: bold;
+    margin: 30px 15px;
+    font-size: 30px;
+}
+
+a.btn{
+   font-size: 16px; 
+   margin: 30px 15px;
+   display: block;
+}
+
+</style>
+
+
+<script>
+    $(document).ready(function () {
+        firebase.auth().onAuthStateChanged(function(user) {
+            if (user) {
+                console.log('someone logged in');
+                $('#logoutBtn').removeClass('notVisible');
+                $('#loginBtn').addClass('notVisible');
+            } 
+        });
+    });
+
+    function userLogout() {
+        firebase.auth().signOut().then(function() {
+            window.location.href = 'login.html'
+        }).catch(function(error) {
+            alert(error);
+        });
+
+    }
+
+    function buildNewsArticleHTML(article) {
+        var htmlContent = '<div class="card newsCard hoverable"><div class="card-body">' +
+            '<blockquote class="blockquote mb-0"><a href="'+article._link+'" target="_blank">' + article._title + '</a>' +
+            '<p class="aDescription">' + article._description + '</p>' +
+            '<p class="aPubDate">' + article._pubDate + '</p>' +
+            '</blockquote ><button type="button" class="btn btn-primary" onclick="saveArticle(this)">Save</button></div></div> ';
+        document.body.insertAdjacentHTML("beforeend", htmlContent);
+    }
+
+    function addRSSFeedByUrl() {
+        var feed = $('#rssFeedInputUrl').val();
+        $.ajax(feed, {
+            accepts:{
+                xml: "application/rss+xml"
+            },
+            async:false,
+            dataType:"xml",
+            success: function(data) {
+                parseXml(data);
+            }
+        });
+    }
+    
+    function parseXml(data) {
+        newsArticle = new NewsArticle();
+        $(data).find("item").each(function(){
+            var el = $(this);
+
+            newsArticle.title = el.find("title").text();
+            newsArticle.description = el.find("description").text();
+            newsArticle.pubDate = el.find("pubDate").text();
+            newsArticle.image = el.find("media\\:content, content").attr('url');
+            newsArticle.link = el.find("link").text();
+            buildNewsArticleHTML(newsArticle);
+
+        });
+    }
+
+    function saveArticle(article) {
+        console.log(article);
+    }
+
+    function toggleActive(item) {
+        $('a').removeClass("active");
+        $(item).toggleClass("active"); 
+        $(item).text() == 'XML' ? $('#xmlInput').removeClass('notVisible') : $('#xmlInput').addClass('notVisible');
+        $(item).text() == 'URL' ? $('#urlInput').removeClass('notVisible') : $('#urlInput').addClass('notVisible');
+
+    }
+
+
+    class NewsArticle {
+        constructor(title, description, pubDate, image, link) {
+            this.title = title;
+            this.description = description;
+            this.pubDate = pubDate;
+            this.image = image;
+            this.link = link;
+        }
+
+        get title() {
+            return this.title;
+        }
+        set title(value) {
+            this._title = value;
+        }
+        get description() {
+            return this.description;
+        }
+        set description(value) {
+            this._description = value;
+        }
+        get pubDate() {
+            return this.pubDate;
+        }
+        set pubDate(value) {
+            this._pubDate = value;
+        }
+        get image() {
+            return this.image;
+        }
+        set image(value) {
+            this._image = value;
+        }
+        get link() {
+            return this.link;
+        }
+        set link(value) {
+            this._link = value;
+        }
+
+    }
+
+    //https://www.nytimes.com/svc/collections/v1/publish/https://www.nytimes.com/section/world/rss.xml
+</script>
+
+
